@@ -38,13 +38,11 @@ export function RouteComponent() {
   const { isExceeded } = useVersion()
 
   const providers = useMemo<ProviderInfo[]>(() => {
+    // 轻聊：无账号系统，内置 Chatbox AI 提供方不出现在设置列表
     const systemProviders = SystemProviders().filter(
-      (p) => !(isExceeded && p.name.toLocaleLowerCase().match(/openai|claude|gemini/i))
+      (p) => p.id !== 'chatbox-ai' && !(isExceeded && p.name.toLocaleLowerCase().match(/openai|claude|gemini/i))
     )
-    // Put ChatboxAI first
-    const chatboxAI = systemProviders.find((p) => p.id === 'chatbox-ai')
-    const others = systemProviders.filter((p) => p.id !== 'chatbox-ai')
-    return [...(chatboxAI ? [chatboxAI] : []), ...others, ...(customProviders || [])].map((p) => ({
+    return [...systemProviders, ...(customProviders || [])].map((p) => ({
       ...p,
       ...(providersMap?.[p.id] || {}),
     }))
@@ -66,8 +64,10 @@ export function RouteComponent() {
 
   const handleSelectProvider = useCallback(
     (providerId: string) => {
+      // 轻聊：内置 Chatbox AI 提供方不可选，其余走通用详情页
+      if (providerId === 'chatbox-ai') return
       navigate({
-        to: providerId === 'chatbox-ai' ? '/settings/provider/chatbox-ai' : '/settings/provider/$providerId',
+        to: '/settings/provider/$providerId',
         params: { providerId },
       })
     },

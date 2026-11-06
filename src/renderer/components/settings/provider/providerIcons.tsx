@@ -1,26 +1,19 @@
-import { Image } from '@mantine/core'
-import { ModelProviderEnum } from '@shared/types'
 import ProviderIcon from '@/components/icons/ProviderIcon'
-import { getProviderIconSrc } from '@/utils/providerIconSrc'
 
 export const FEATURED_PROVIDER_IDS: string[] = [
-  ModelProviderEnum.OpenAI,
-  ModelProviderEnum.Claude,
-  ModelProviderEnum.Gemini,
-  ModelProviderEnum.SiliconFlow,
-  ModelProviderEnum.DeepSeek,
-  ModelProviderEnum.XiaomiMiMo,
-  ModelProviderEnum.MiniMax,
-  ModelProviderEnum.GLM,
-  ModelProviderEnum.OpenRouter,
-  ModelProviderEnum.Ollama,
+  'openai',
+  'claude',
+  'gemini',
+  'siliconflow',
+  'deepseek',
+  'xiaomi-mimo',
+  'minimax',
+  'chatglm-6b',
+  'openrouter',
+  'ollama',
 ]
 
+/** 轻聊：提供方图标统一走 ProviderIcon（官方矢量标志 → 本地 PNG → 自绘字母标） */
 export function ProviderIconImage({ providerId, size = 32 }: { providerId: string; size?: number }) {
-  const iconSrc = getProviderIconSrc(providerId)
-  return iconSrc ? (
-    <Image w={size} h={size} src={iconSrc} alt={providerId} />
-  ) : (
-    <ProviderIcon provider={providerId} size={size} />
-  )
+  return <ProviderIcon provider={providerId} size={size} />
 }

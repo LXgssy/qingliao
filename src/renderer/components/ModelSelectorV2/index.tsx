@@ -125,35 +125,15 @@ export const ModelSelectorV2 = forwardRef<HTMLDivElement, ModelSelectorV2Props>(
       }
     }, [desktopDetail])
 
-    const chatboxProvider = useMemo(
-      () =>
-        chatboxAIModelList
-          ? {
-              id: chatboxAIModelList.provider.id,
-              name: chatboxAIModelList.provider.name,
-            }
-          : providers.find((provider) => provider.id === ModelProviderEnum.ChatboxAI),
-      [chatboxAIModelList, providers]
-    )
+    // 轻聊：无账号系统 —— 模型选择器不展示内置 Chatbox AI 分组
+    const chatboxProvider: { id: string; name: string } | undefined = undefined
 
     const genericProviders = useMemo(() => {
-      const manifestBackedChatboxProviders =
-        !chatboxAIModelList && chatboxAIModels.length > 0
-          ? [
-              {
-                id: ModelProviderEnum.ChatboxAI,
-                name: 'Chatbox AI',
-                isCustom: false,
-                models: chatboxAIModels,
-              },
-            ]
-          : []
-      const sourceProviders = chatboxAIModelList
-        ? providers.filter((provider) => provider.id !== ModelProviderEnum.ChatboxAI)
-        : [
-            ...manifestBackedChatboxProviders,
-            ...providers.filter((provider) => provider.id !== ModelProviderEnum.ChatboxAI),
-          ]
+      const manifestBackedChatboxProviders: { id: string; name: string; isCustom: boolean; models: unknown[] }[] = []
+      const sourceProviders = [
+        ...manifestBackedChatboxProviders,
+        ...providers.filter((provider) => provider.id !== ModelProviderEnum.ChatboxAI),
+      ]
 
       return sourceProviders
         .map((provider) => ({

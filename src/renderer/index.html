@@ -181,6 +181,8 @@
         function finish() {
           if (done) return
           done = true
+          // 关键保险：立即禁止 splash 拦截鼠标/滚轮，避免遮罩吞事件
+          if (screen) screen.style.pointerEvents = 'none'
           setPct(100)
           say('')
           setTimeout(function () {
@@ -221,6 +223,10 @@
             finish()
           }
         }, 150)
+        // 双重兑底：无论发生什么，20 秒后强制移除 splash 并放开交互
+        setTimeout(function () {
+          if (screen && screen.parentNode) screen.parentNode.removeChild(screen)
+        }, 20000)
         // Service Worker：缓存优先，二次访问秒开
         if (location.protocol === 'https:' && 'serviceWorker' in navigator) {
           navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {})

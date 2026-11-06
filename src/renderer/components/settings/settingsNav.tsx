@@ -16,7 +16,6 @@ import {
   IconPalette,
   type IconProps,
   IconRobotFace,
-  IconSparkles,
   IconStack2,
   IconTool,
   IconWand,
@@ -84,7 +83,7 @@ export function getSettingsNavGroups(): SettingsNavGroup[] {
   ]
 
   return [
-    { title: 'Account', items: [{ key: 'chatbox-ai', label: 'Chatbox AI', noTranslate: true, icon: IconSparkles }] },
+    // 轻聊：纯本地应用，无账号系统，移除 Chatbox AI/账号导航入口
     {
       title: 'Models',
       items: [

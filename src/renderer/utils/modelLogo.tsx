@@ -1,48 +1,57 @@
-// 轻聊：模型品牌标全部来自自绘图标体系（原创字母标/几何标）
-import { MODEL_BRAND_MARKS, PROVIDER_MARKS, type IconType } from '@/qingliao/icons'
+// 轻聊：模型品牌标 —— 官方厂商标志优先（矢量内嵌），无官方图形时回退自绘字母标
+import { MODEL_BRAND_MARKS, type IconType } from '@/qingliao/icons'
+import { BrandLogo } from '@/qingliao/icons/brand-logos'
 import { type ModelBrand, matchModelBrand } from '@shared/utils/model-logo-patterns'
 import type { ReactElement } from 'react'
 
 /**
  * 品牌检测逻辑在 @shared/utils/model-logo-patterns（与原生端共享）；
- * 此映射把每个品牌绑定到自绘标。
+ * 此映射把每个品牌绑定到官方标志（brand-logos），缺失时用自绘标。
  */
-const BRAND_ICONS: Record<ModelBrand, IconType> = {
-  openai: MODEL_BRAND_MARKS.gpt,
-  claude: MODEL_BRAND_MARKS.claude,
-  gemini: MODEL_BRAND_MARKS.gemini,
-  deepseek: MODEL_BRAND_MARKS.deepseek,
-  qwen: MODEL_BRAND_MARKS.qwen,
-  meta: MODEL_BRAND_MARKS.llama,
-  mistral: MODEL_BRAND_MARKS.mistral,
-  moonshot: MODEL_BRAND_MARKS.moonshot,
-  kimi: MODEL_BRAND_MARKS.kimi,
-  chatglm: MODEL_BRAND_MARKS.glm,
-  zhipu: MODEL_BRAND_MARKS.glm,
-  doubao: MODEL_BRAND_MARKS.doubao,
-  baichuan: MODEL_BRAND_MARKS.baichuan,
-  yi: MODEL_BRAND_MARKS.yi,
-  hunyuan: MODEL_BRAND_MARKS.hunyuan,
-  minimax: MODEL_BRAND_MARKS.minimax,
-  stepfun: MODEL_BRAND_MARKS.step,
-  cohere: MODEL_BRAND_MARKS.command,
-  grok: MODEL_BRAND_MARKS.grok,
-  perplexity: PROVIDER_MARKS.perplexity,
-  xiaomi: PROVIDER_MARKS.mimo,
-  longcat: PROVIDER_MARKS.longcat,
+const BRAND_LOGO_KEYS: Partial<Record<ModelBrand, string>> = {
+  openai: 'openai',
+  claude: 'claude',
+  gemini: 'gemini',
+  deepseek: 'deepseek',
+  qwen: 'qwen',
+  meta: 'meta',
+  mistral: 'mistral',
+  moonshot: 'moonshot',
+  kimi: 'kimi',
+  chatglm: 'chatglm',
+  zhipu: 'zhipu',
+  doubao: 'doubao',
+  baichuan: 'baichuan',
+  hunyuan: 'hunyuan',
+  minimax: 'minimax',
+  stepfun: 'stepfun',
+  cohere: 'cohere',
+  grok: 'grok',
+  perplexity: 'perplexity',
+  xiaomi: 'xiaomi',
+  longcat: 'longcat',
 }
 
-export function getModelLogoConfig(modelId: string): { icon: IconType } | undefined {
+const BRAND_FALLBACK_ICONS: Partial<Record<ModelBrand, IconType>> = {
+  yi: MODEL_BRAND_MARKS.yi,
+}
+
+export function getModelLogoConfig(modelId: string): { icon: IconType } | { logoKey: string } | undefined {
   const brand = matchModelBrand(modelId)
-  return brand ? { icon: BRAND_ICONS[brand] } : undefined
+  if (!brand) return undefined
+  const logoKey = BRAND_LOGO_KEYS[brand]
+  if (logoKey) return { logoKey }
+  const icon = BRAND_FALLBACK_ICONS[brand]
+  return icon ? { icon } : undefined
 }
 
 export function renderModelIcon(modelId: string, size: number = 16, _isDarkMode: boolean = false): ReactElement | undefined {
   const config = getModelLogoConfig(modelId)
   if (!config) return undefined
+  if ('logoKey' in config) return <BrandLogo id={config.logoKey} size={size} />
   const { icon: Icon } = config
   return <Icon size={size} />
 }
 
 // 保留按模型名直接匹配的能力（供其他场景使用）
-export { modelBrandMarkFor }
+export { modelBrandMarkFor } from '@/qingliao/icons'

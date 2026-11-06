@@ -18,7 +18,8 @@ export function RouteComponent() {
   const navigate = useNavigate()
   useEffect(() => {
     if (!isSmallScreen) {
-      navigate({ to: '/settings/chatbox-ai', replace: true })
+      // 轻聊：无账号系统，默认落在模型提供方页
+      navigate({ to: '/settings/provider', replace: true })
     }
   }, [isSmallScreen, navigate])
 

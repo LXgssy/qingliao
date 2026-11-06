@@ -5,7 +5,6 @@ import { TestId } from '@shared/automation/testids'
 import {
   IconCode,
   IconDownload,
-  IconHelpCircle,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
   IconMessageChatbot,
@@ -311,21 +310,7 @@ export default function Sidebar() {
                 }}
               />
             </Box>
-            {!versionHook.isExceeded && (
-              <Tooltip label={t('Help')} openDelay={500} withArrow>
-                <IconButton
-                  icon={IconHelpCircle}
-                  size={footerButtonSize}
-                  iconSize={footerIconSize}
-                  aria-label={t('Help')}
-                  color="chatbox-tertiary"
-                  onClick={() => {
-                    navigate({ to: '/guide' })
-                    closeOnSmallScreen()
-                  }}
-                />
-              </Tooltip>
-            )}
+            {/* 轻聊：移除「帮助」按钮（原跳转 Boxy 引导页） */}
             {FORCE_ENABLE_DEV_PAGES && CHATBOX_BUILD_PLATFORM !== 'web' && (
               <Tooltip label="Dev Tools" openDelay={500} withArrow>
                 <IconButton

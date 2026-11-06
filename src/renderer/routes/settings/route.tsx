@@ -1,6 +1,6 @@
 import { Box, Flex, Text, TextInput, UnstyledButton } from '@mantine/core'
 import { TestId } from '@shared/automation/testids'
-import { IconChevronLeft, IconChevronRight, IconSearch, IconSparkles, IconX } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconSearch, IconX } from '@tabler/icons-react'
 import {
   createFileRoute,
   Link,
@@ -26,9 +26,7 @@ import {
   settingsNavKeyForSection,
   useSettingsNavMeta,
 } from '@/components/settings/settingsNav'
-import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings')({
   component: RouteComponent,
@@ -221,9 +219,7 @@ export function SettingsRoot() {
   const section = useSettingsSection()
   const activeKey = settingsNavKeyForSection(section)
   const isSmallScreen = useIsSmallScreen()
-  const { providers: availableProviders } = useProviders()
-  const isChatboxAIActivated = availableProviders.some((p) => p.id === 'chatbox-ai')
-  const licensePlanName = useSettingsStore((s) => s.licensePlanName)
+  // 轻聊：无账号系统，Chatbox AI 入口已移除
   const groups = useMemo(() => getSettingsNavGroups(), [])
   const meta = useSettingsNavMeta()
   const [query, setQuery] = useState('')
@@ -272,34 +268,8 @@ export function SettingsRoot() {
             </div>
           ) : (
             <>
-              <Link to="/settings/chatbox-ai" className="block no-underline">
-                <Flex
-                  align="center"
-                  gap="sm"
-                  className="rounded-xl bg-chatbox-background-primary px-3.5 py-3 text-chatbox-tint-primary"
-                >
-                  <Flex
-                    align="center"
-                    justify="center"
-                    className="size-10 shrink-0 rounded-full bg-chatbox-background-brand-secondary text-chatbox-tint-brand"
-                  >
-                    <ScalableIcon icon={IconSparkles} size={22} strokeWidth={ICON_STROKE_WIDTH} />
-                  </Flex>
-                  <Flex direction="column" flex={1} miw={0}>
-                    <Text fz={16} fw={600} lh="22px">
-                      Chatbox AI
-                    </Text>
-                    <Text fz={13} lh="18px" c={isChatboxAIActivated ? 'chatbox-success' : 'chatbox-tertiary'} truncate>
-                      {isChatboxAIActivated
-                        ? [t('Activated'), licensePlanName].filter(Boolean).join(' · ')
-                        : t('Not activated')}
-                    </Text>
-                  </Flex>
-                  <ScalableIcon icon={IconChevronRight} size={20} className="text-chatbox-tint-tertiary" />
-                </Flex>
-              </Link>
+              {/* 轻聊：无账号系统，移除移动端 Chatbox AI 卡片 */}
               {groups
-                .filter((group) => group.items.some((item) => item.key !== 'chatbox-ai'))
                 .map((group) => (
                   <section key={group.title} className="flex flex-col gap-1.5">
                     <Text fz={12} fw={600} c="chatbox-tertiary" px={14}>
@@ -307,7 +277,6 @@ export function SettingsRoot() {
                     </Text>
                     <div className="flex flex-col overflow-hidden rounded-xl bg-chatbox-background-primary">
                       {group.items
-                        .filter((item) => item.key !== 'chatbox-ai')
                         .map((item, index) => (
                           <Link
                             key={item.key}
@@ -390,11 +359,6 @@ export function SettingsRoot() {
                       <Text span fz={14} lh="20px" flex={1} lineClamp={1} className="!text-inherit !font-[inherit]">
                         {itemLabel(item)}
                       </Text>
-                      {item.key === 'chatbox-ai' && isChatboxAIActivated && (
-                        <Text span fz={11} c="chatbox-success">
-                          {t('Activated')}
-                        </Text>
-                      )}
                     </Link>
                   )
                 })}
