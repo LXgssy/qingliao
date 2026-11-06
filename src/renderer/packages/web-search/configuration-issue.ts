@@ -15,13 +15,12 @@ export type WebSearchConfigurationIssue =
   | 'querit-api-key'
   | 'searxng-instance'
 
+// 轻聊：无登录门槛。bing 无需任何配置；build-in 回退 Bing，同样视为可用
 export function getWebSearchConfigurationIssue(
   configuration: WebSearchConfiguration,
-  licenseKey?: string
+  _licenseKey?: string
 ): WebSearchConfigurationIssue | null {
   switch (configuration.provider) {
-    case 'build-in':
-      return licenseKey ? null : 'chatbox-ai-sign-in'
     case 'tavily':
       return configuration.tavilyApiKey ? null : 'tavily-api-key'
     case 'bocha':
@@ -30,7 +29,7 @@ export function getWebSearchConfigurationIssue(
       return configuration.queritApiKey ? null : 'querit-api-key'
     case 'searxng':
       return configuration.searxngBaseUrl?.trim() ? null : 'searxng-instance'
-    case 'bing':
+    default:
       return null
   }
 }

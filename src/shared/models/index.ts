@@ -9,7 +9,7 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
   [ModelProviderEnum.OpenAIResponses]: 'OpenAI Responses API',
   [ModelProviderEnum.Azure]: 'Azure OpenAI API',
   [ModelProviderEnum.GLM]: 'GLM',
-  [ModelProviderEnum.ChatboxAI]: 'Chatbox AI',
+  [ModelProviderEnum.ChatboxAI]: '轻聊',
   [ModelProviderEnum.Claude]: 'Claude API',
   [ModelProviderEnum.Gemini]: 'Google Gemini API',
   [ModelProviderEnum.Qwen]: 'Qwen API',
@@ -40,12 +40,7 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
 }
 
 export const AIModelProviderMenuOptionList = [
-  {
-    value: ModelProviderEnum.ChatboxAI,
-    label: aiProviderNameHash[ModelProviderEnum.ChatboxAI],
-    featured: true,
-    disabled: false,
-  },
+  // 轻聊：移除内置 ChatboxAI 付费项
   {
     value: ModelProviderEnum.OpenAI,
     label: aiProviderNameHash[ModelProviderEnum.OpenAI],

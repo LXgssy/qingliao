@@ -210,12 +210,11 @@ function Root() {
       await Promise.all([initSettingsStore(), initOnboardingStore()])
       void prefetchModelRegistry()
 
-      const syncRemoteConfig = async () => {
-        const remoteConfig = await remote
-          .getRemoteConfig('setting_chatboxai_first')
-          .catch(() => ({ setting_chatboxai_first: false }) as RemoteConfig)
-        setRemoteConfig(async (prev) => ({ ...(await prev), ...remoteConfig }))
-        return remoteConfig
+      // 轻聊：不请求远程配置，使用本地常量
+      const syncRemoteConfig = async (): Promise<RemoteConfig> => {
+        const localConfig = { setting_chatboxai_first: false } as unknown as RemoteConfig
+        setRemoteConfig(async (prev) => ({ ...(await prev), ...localConfig }))
+        return localConfig
       }
 
       const launchOptions = getRendererDevLaunchOptions()
@@ -273,7 +272,8 @@ function Root() {
       const needsSetup = settingActions.needEditSetting()
 
       // Auto-navigate to guide for new users who need setup
-      if (!isExceeded && !onboardingCompleted && needsSetup) {
+      // 轻聊：禁用强制引导，新用户直接进入主界面自行配置
+      if (false && !isExceeded && !onboardingCompleted && needsSetup) {
         router.navigate({ to: '/guide', replace: true })
         return
       }

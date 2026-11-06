@@ -2,38 +2,27 @@ import { cachified } from '@epic-web/cachified'
 import type { SearchResultItem } from '@shared/types'
 import { truncate } from 'lodash'
 import platform from '@/platform'
-import { getExtensionSettings, getLanguage, getLicenseKey } from '@/stores/settingActions'
+import { getExtensionSettings, getLanguage } from '@/stores/settingActions'
 import { ChatboxAIAPIError } from '../../../shared/models/errors'
 import type WebSearch from './base'
 import { BingSearch } from './bing'
 import { BingNewsSearch } from './bing-news'
 import { BochaSearch } from './bocha'
-import { ChatboxSearch } from './chatbox-search'
 import { QueritSearch } from './querit'
 import { normalizeSearxngBaseUrl, SearxngSearch } from './searxng'
 import { TavilySearch } from './tavily'
 
 const MAX_CONTEXT_ITEMS = 10
 
-// 根据配置的搜索提供方来选择搜索服务
+// 根据配置的搜索提供方来选择搜索服务（轻聊：无内置付费搜索、无登录要求）
 function getSearchProviders() {
   const settings = getExtensionSettings()
-  const licenseKey = getLicenseKey()
 
   const selectedProviders: WebSearch[] = []
   const provider = settings.webSearch.provider
   const language = getLanguage()
 
   switch (provider) {
-    case 'build-in':
-      if (!licenseKey) {
-        throw ChatboxAIAPIError.fromCodeName(
-          'chatbox_search_license_key_required',
-          'chatbox_search_license_key_required'
-        )
-      }
-      selectedProviders.push(new ChatboxSearch(licenseKey))
-      break
     case 'bing':
       selectedProviders.push(new BingSearch())
       if (language !== 'zh-Hans' && platform.type !== 'mobile') {
@@ -73,7 +62,9 @@ function getSearchProviders() {
       break
     }
     default:
-      throw new Error(`Unsupported search provider: ${provider}`)
+      // 轻聊：未知/旧版 provider（含 build-in）一律回退 Bing，保证开箱可用
+      selectedProviders.push(new BingSearch())
+      break
   }
 
   return selectedProviders
@@ -127,7 +118,7 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
 }
 
 export async function testWebSearchConnection(signal?: AbortSignal): Promise<void> {
-  await _searchRelatedResults('Chatbox', signal)
+  await _searchRelatedResults('轻聊', signal)
 }
 
 const cache = new Map()
@@ -153,7 +144,7 @@ export const webSearchExecutor = async (
  * Single source of truth: which configured providers offer the parse_link tool.
  * Keep in sync with the provider classes' `supportsParseLink` flags.
  */
-export const PROVIDERS_WITH_PARSE_LINK: ReadonlySet<string> = new Set(['build-in', 'tavily'])
+export const PROVIDERS_WITH_PARSE_LINK: ReadonlySet<string> = new Set(['tavily'])
 
 /**
  * Returns the first configured search provider that supports parseLink.
