@@ -307,7 +307,7 @@
     "tsconfig-paths-webpack-plugin": "^4.0.1",
     "typescript": "^5.8.3",
     "unified": "11.0.5",
-    "unist-util-visit": "^5.0.0",
+    "unist-util-visit": "^5.2.0",
     "url-loader": "^4.1.1",
     "vaul": "^1.1.2",
     "vite": "^7.3.6",
