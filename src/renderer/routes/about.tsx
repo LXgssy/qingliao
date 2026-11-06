@@ -1,6 +1,5 @@
 import { Stack, Text, Title, Anchor, Divider, Box, Group } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
 import Page from '@/components/layout/Page'
 import useVersion from '@/hooks/useVersion'
 import { MarkQingliao } from '@/qingliao/icons'
@@ -13,7 +12,6 @@ export const Route = createFileRoute('/about')({
 })
 
 function RouteComponent() {
-  const { t } = useTranslation()
   const version = useVersion()
 
   return (
@@ -26,34 +24,34 @@ function RouteComponent() {
           轻聊
         </Title>
         <Text size="sm" c="dimmed" ta="center">
-          {/^\d/.test(version.version) ? `v${version.version}` : version.version}
+          {/^\d/.test(version.version || '') ? `v${version.version}` : ''}
         </Text>
         <Text size="sm" c="dimmed" ta="center" lh={1.8}>
-          {t('A pure static Chinese AI chat client that works out of the box, with all data stored only in your browser.')}
+          开箱即用的纯静态中文 AI 聊天客户端，所有数据仅保存在你的浏览器中。
         </Text>
 
         <Divider w="100%" />
 
         <Stack gap="md" w="100%">
           <AboutRow
-            label={t('GitHub Repository')}
+            label={'GitHub 仓库'}
             value="LXgssy/qingliao"
             href={REPO_URL}
           />
           <AboutRow
-            label={t('Upstream Project')}
+            label={'上游项目'}
             value="Chatbox (GPL-3.0)"
             href={UPSTREAM_URL}
           />
-          <AboutRow label={t('Open Source License')} value="GPL-3.0" href={UPSTREAM_URL} />
-          <AboutRow label={t('Data Storage')} value={t('Browser local storage, never uploaded')} />
+          <AboutRow label={'开源协议'} value="GPL-3.0" href={UPSTREAM_URL} />
+          <AboutRow label={'数据存储'} value={'浏览器本地存储，绝不上传'} />
         </Stack>
 
         <Divider w="100%" />
 
         <Group gap={4} pb={32}>
           <Text size="xs" c="dimmed" ta="center">
-            {t('Based on the open-source project Chatbox, redesigned and rebuilt for the web.')}
+            基于开源项目 Chatbox (GPL-3.0) 重构的纯网页版。
           </Text>
         </Group>
       </Stack>
