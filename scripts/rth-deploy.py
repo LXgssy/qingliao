@@ -103,6 +103,19 @@ def main():
     if not changed and not binary_or_new:
         print('线上已是最新，无需上传'); return
 
+    # 3.5) 删除远端多余文件（旧构建残留）
+    local_set = {rel for rel, _, _ in local_paths}
+    stale = [p for p in remote if p not in local_set]
+    if stale:
+        print(f'远端多余文件 {len(stale)} 个，分批删除')
+        for i in range(0, len(stale), 80):
+            part = stale[i:i + 80]
+            st, out = api('/host/site/changes', {
+                'changes': [{'operation': 'delete', 'path': p} for p in part],
+                'domain': SITE,
+            })
+            print(f'  删除 {len(part)} 个 → {st}', '' if st == 200 else out[:200])
+
     # 4) 分批上传文本变更
     batch, batch_size = [], 0
     def flush():
@@ -114,11 +127,40 @@ def main():
         if not ok: sys.exit('上传失败')
         batch, batch_size = [], 0
 
+    import mimetypes, uuid as _uuid
+    username = d.get('username') if isinstance(d, dict) else None
+
+    def upload_binary(rel, p):
+        mime = mimetypes.guess_type(rel)[0] or 'application/javascript'
+        data = open(p, 'rb').read()
+        b = _uuid.uuid4().hex
+        body = (f'--{b}\r\nContent-Disposition: form-data; name="content"; filename="{os.path.basename(rel)}"\r\n'
+                f'Content-Type: {mime}\r\n\r\n').encode() + data + \
+               (f'\r\n--{b}\r\nContent-Disposition: form-data; name="domain"\r\n\r\n{SITE}\r\n'
+                f'--{b}\r\nContent-Disposition: form-data; name="key"\r\n\r\n{rel}\r\n'
+                f'--{b}\r\nContent-Disposition: form-data; name="username"\r\n\r\n{username or ""}\r\n'
+                f'--{b}--\r\n').encode()
+        st, out = req(BASES[0] + '/host/site/binary', data=body,
+                      headers={'Content-Type': f'multipart/form-data; boundary={b}'})
+        print(f'  binary 上传 {rel}({len(data)//1024}KB) → {st}', '' if st == 200 else out[:200])
+        if st != 200:
+            # 海外端点失败则换备用端点
+            st, out = req(BASES[1] + '/host/site/binary', data=body,
+                          headers={'Content-Type': f'multipart/form-data; boundary={b}'})
+            print(f'  备用端点 → {st}', '' if st == 200 else out[:200])
+            if st != 200:
+                sys.exit('binary 上传失败')
+
     for rel in changed + [r for r in binary_or_new if os.path.splitext(r)[1].lower() in TEXT_EXT]:
         p = os.path.join(DIST, rel)
         content = open(p, encoding='utf-8').read()
+        nbytes = len(content.encode())
+        if nbytes > 1536 * 1024:  # >1.5MB 单文件走 binary
+            flush()
+            upload_binary(rel, p)
+            continue
         batch.append({'content': content, 'operation': 'write', 'path': rel})
-        batch_size += len(content.encode())
+        batch_size += nbytes
         if batch_size >= BATCH_BYTES: flush()
     flush()
 

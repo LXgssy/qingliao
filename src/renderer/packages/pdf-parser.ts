@@ -4,7 +4,13 @@ import {
   LOCAL_PARSER_MAX_PDF_FILE_SIZE,
   LOCAL_PARSER_PDF_PASSWORD_PROTECTED_ERROR,
 } from '@shared/file-parse-errors'
-import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url'
+let pdfWorkerUrlPromise: Promise<string> | null = null
+async function loadPdfWorkerUrl(): Promise<string> {
+  if (!pdfWorkerUrlPromise) {
+    pdfWorkerUrlPromise = import('pdfjs-dist/legacy/build/pdf.worker.mjs?url').then((m) => m.default)
+  }
+  return pdfWorkerUrlPromise
+}
 
 type PdfTextItem = {
   str: string
@@ -28,7 +34,10 @@ function isPdfTextItem(item: unknown): item is PdfTextItem {
 }
 
 async function loadPdfjs() {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const [pdfjs, workerUrl] = await Promise.all([
+    import('pdfjs-dist/legacy/build/pdf.mjs'),
+    loadPdfWorkerUrl(),
+  ])
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
   return pdfjs
 }

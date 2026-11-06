@@ -14,21 +14,66 @@ createRequire(import.meta.url)('./scripts/build-mobile-work-worker.cjs').buildWo
  */
 export function exactAliasShims(): Plugin {
   const muiShimDir = resolve(__dirname, 'src/renderer/shims/mui')
+  const genDir = resolve(__dirname, 'src/renderer/shims/gen')
+  const genShims: Record<string, string> = {
+    '@mantine/core': resolve(genDir, 'mantine-core.ts'),
+    '@mantine/hooks': resolve(genDir, 'mantine-hooks.ts'),
+    '@mui/material': resolve(genDir, 'mui-material.ts'),
+    lodash: resolve(genDir, 'lodash.ts'),
+    'lodash-es': resolve(genDir, 'lodash.ts'),
+    'date-fns': resolve(genDir, 'date-fns.ts'),
+  }
   return {
     name: 'ql-exact-alias-shims',
     enforce: 'pre',
     resolveId(source) {
       if (source === '@tabler/icons-react') return resolve(__dirname, 'src/renderer/shims/qingliao-tabler.tsx')
       if (source === 'lucide-react') return resolve(__dirname, 'src/renderer/shims/qingliao-lucide.tsx')
+      if (source === '@sentry/react' || source === '@sentry/browser') {
+        return resolve(__dirname, 'src/renderer/shims/qingliao-sentry.tsx')
+      }
       if (source.startsWith('@mui/icons-material/')) {
         const name = source.slice('@mui/icons-material/'.length)
         const shim = resolve(muiShimDir, `${name}.tsx`)
         if (fs.existsSync(shim)) return shim
       }
+      // 精确匹配（不影响 lodash/xxx、date-fns/locale 等子路径）
+      if (genShims[source] && fs.existsSync(genShims[source])) return genShims[source]
       return null
     },
   }
 }
+/**
+ * 轻聊：node_modules 预压缩 —— rollup 解析前用 esbuild 压缩第三方代码，
+ * 缩小 AST 内存（构建机只有 ~3GB，否则 rendering 阶段被内核 OOM）。
+ */
+async function preMinifyNodeModules(): Promise<Plugin> {
+  const esbuild = await import('esbuild')
+  return {
+    name: 'ql-pre-minify-node-modules',
+    enforce: 'post',
+    transform(code, id) {
+      const clean = id.split('?')[0]
+      if (!/\.(js|mjs|cjs|ts|tsx|jsx)$/.test(clean)) return null
+      if (clean.includes('.d.ts')) return null
+      if (code.length < 2048) return null // 小文件不值得
+      try {
+        const out = esbuild.transformSync(code, {
+          minifyWhitespace: true,
+          minifySyntax: true,
+          minifyIdentifiers: false,
+          legalComments: 'none',
+          target: 'es2020',
+          loader: clean.endsWith('.tsx') || clean.endsWith('.ts') ? 'ts' : 'js',
+          jsx: 'automatic',
+        })
+        if (out.code && out.code.length < code.length) return { code: out.code, map: null }
+      } catch {}
+      return null
+    },
+  }
+}
+
 /**
  * Vite plugin to inject <base href="/"> for web builds
  * This ensures relative paths resolve correctly for SPA routes like /session/xxx
@@ -159,6 +204,14 @@ if (inferredDist) {
   process.env.SENTRY_DIST = inferredDist
 }
 
+const appChunkMap: Record<string, string> = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(resolve(__dirname, 'src/renderer/shims/gen/app-chunks.json'), 'utf8'))
+  } catch {
+    return {}
+  }
+})()
+
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production'
   const isWeb = process.env.CHATBOX_BUILD_PLATFORM === 'web'
@@ -169,33 +222,7 @@ export default defineConfig(({ mode }) => {
 
   const config: ElectronViteConfig = {
     main: {
-      plugins: [
-        ...(isProduction
-          ? [
-              visualizer({
-                filename: 'release/app/dist/main/stats.html',
-                open: false,
-                title: 'Main Process Dependency Analysis',
-              }),
-            ]
-          : [externalizeDepsPlugin()]),
-        process.env.SENTRY_AUTH_TOKEN
-          ? sentryVitePlugin({
-              authToken: process.env.SENTRY_AUTH_TOKEN,
-              org: 'sentry',
-              project: 'chatbox',
-              url: 'https://sentry.midway.run/',
-              release: {
-                name: inferredRelease,
-                ...(inferredDist ? { dist: inferredDist } : {}),
-              },
-              sourcemaps: {
-                assets: isProduction ? 'release/app/dist/main/**' : 'output/main/**',
-              },
-              telemetry: false,
-            })
-          : undefined,
-      ].filter(Boolean),
+      plugins: [externalizeDepsPlugin()],
       build: {
         outDir: isProduction ? 'release/app/dist/main' : undefined,
         lib: {
@@ -234,13 +261,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     preload: {
-      plugins: [
-        visualizer({
-          filename: 'release/app/dist/preload/stats.html',
-          open: false,
-          title: 'Preload Process Dependency Analysis',
-        }),
-      ],
+      plugins: [],
       build: {
         outDir: isProduction ? 'release/app/dist/preload' : undefined,
         lib: {
@@ -274,6 +295,38 @@ export default defineConfig(({ mode }) => {
         react({}),
         dvhToVh(),
         injectViewportContent(isDesktop),
+        preMinifyNodeModules(),
+{
+          name: 'ql-entry-attrib',
+          generateBundle(_o, bundle) {
+            try {
+              for (const [name, f] of Object.entries(bundle)) {
+                if (f.type !== 'chunk') continue
+                const rendered = f.code.length
+                const byDir = {}
+                let total = 0
+                for (const mid of Object.keys(f.modules)) {
+                  let s = 0
+                  try { s = fs.statSync(mid.split('?')[0]).size } catch { s = 0 }
+                  let dir = 'other'
+                  const m = mid.match(/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)\//)
+                  if (mid.includes('chatbox-src/src/renderer/')) dir = 'app:' + mid.split('src/renderer/')[1].split('/')[0]
+                  else if (mid.includes('chatbox-src/src/shared/')) dir = 'app:shared'
+                  else if (mid.includes('chatbox-src/packages/')) dir = 'app:' + mid.split('packages/')[1].split('/')[0]
+                  else if (m) dir = 'dep:' + m[1]
+                  byDir[dir] = (byDir[dir] || 0) + s
+                  total += s
+                }
+                if (rendered > 1024 * 1024) {
+                  const rows = Object.entries(byDir).sort((a, b) => b[1] - a[1]).slice(0, 25)
+                  fs.writeFileSync('/tmp/ql-attrib-' + name.replace(/\//g, '_') + '.txt', `chunk=${name} rendered=${(rendered / 1048576).toFixed(2)}MB sources=${(total / 1048576).toFixed(2)}MB\n` + rows.map(([k, v]) => `${(v / 1048576).toFixed(2)}MB\t${k}`).join('\n'))
+                }
+              }
+            } catch (e) {
+              fs.writeFileSync('/tmp/ql-attrib.err', String(e))
+            }
+          },
+        },
         exactAliasShims(),
         isWeb ? injectBaseTag() : undefined,
         injectReleaseDate(),
@@ -283,7 +336,7 @@ export default defineConfig(({ mode }) => {
         target: 'es2020', // Avoid static initialization blocks for browser compatibility
         sourcemap: false, // 轻聊：不生成 sourcemap（省体积与内存）
         reportCompressedSize: false,
-        minify: isProduction ? 'esbuild' : false,
+        minify: false, // 轻聊：rollup 不压缩（省内存），由 scripts/build-post.mjs 用 esbuild CLI 逐文件压缩
         rollupOptions: {
           output: {
             entryFileNames: 'js/[name].[hash].js',
@@ -301,44 +354,54 @@ export default defineConfig(({ mode }) => {
               return 'assets/[name].[hash][extname]'
             },
             hoistTransitiveImports: false,
-            // 轻聊分桶：pnpm 路径先剥离 .pnpm/<pkg>@ver/node_modules 前缀再取真实包名
+            // 轻聊分桶：仅语义桶；其余（含应用源码）交给 rollup 默认分块，避免跨桶循环依赖
             manualChunks(id) {
               const normalizedId = id.split(path.sep).join('/')
-              if (!normalizedId.includes('/node_modules/')) {
-                // 应用源码按路径哈希分 6 桶，控制单文件体积
-                const rel = normalizedId.replace(/^.*\/(src|packages)\//, '$1/')
-                let h = 0
-                for (let i = 0; i < rel.length; i++) h = (h * 31 + rel.charCodeAt(i)) >>> 0
-                return 'app-g' + (h % 6)
-              }
+              // 应用源码交给 rollup 默认分块（任何手工分桶都会引发跨桶 TDZ）
               const pm =
                 normalizedId.match(/\/node_modules\/\.pnpm\/[^/]+\/node_modules\/((?:@[^/]+\/)?[^/]+)\//) ||
                 normalizedId.match(/\/node_modules\/((?:@[^/]+\/)?[^/]+)\//)
-              if (pm) {
-                const pkg = pm[1].toLowerCase()
-                // 语法高亮语言包/主题与假数据生成器：不进桶，动态分包按需加载
-                if (pkg.startsWith('@shikijs/') || pkg.startsWith('shiki')) return undefined
-                if (pkg.startsWith('@faker-js/')) return undefined
-                if (pkg === 'zod') return 'vendor-zod'
-                if (pkg === 'react' || pkg === 'react-dom' || pkg === 'scheduler') return 'vendor-react-dom'
-                if (
-                  pkg.startsWith('@mantine/') ||
-                  pkg.startsWith('@mui/') ||
-                  pkg === 'clsx' ||
-                  pkg.startsWith('@emotion/')
-                )
-                  return 'vendor-ui'
-                if (pkg === 'ai' || pkg.startsWith('@ai-sdk/')) return 'vendor-ai'
-                if (pkg === 'katex') return 'vendor-katex'
-                if (pkg === 'lodash' || pkg === 'lodash-es') return 'vendor-lodash'
-                if (pkg.startsWith('d3') || pkg === 'recharts' || pkg.startsWith('victory-vendor')) return 'vendor-charts'
-                if (pkg === '@noble/hashes' || pkg === 'gpt-tokenizer' || pkg === 'js-tiktoken') return 'vendor-tokenizer'
-                if (pkg === 'mermaid' || pkg.startsWith('@mermaid-js/') || pkg === 'cytoscape' || pkg === 'dagre')
-                  return 'vendor-diagrams'
-                let h = 0
-                for (let i = 0; i < pkg.length; i++) h = (h * 31 + pkg.charCodeAt(i)) >>> 0
-                return 'vendor-g' + (h % 8)
+              if (!pm) {
+                // 应用源码分层桶：shared+core 互引成团，单独成桶（其运行时依赖仅 vendors）
+                if (normalizedId.includes('/src/shared/') || normalizedId.includes('/packages/chatbox-core/')) {
+                  return 'app-core'
+                }
+                return undefined
               }
+              const pkg = pm[1].toLowerCase()
+              // 语法高亮：langs/themes 按需动态加载；shiki 核心 + textmate 单独成桶
+              if (pkg.startsWith('@shikijs/langs') || pkg.startsWith('@shikijs/themes') || pkg.startsWith('@faker-js/')) return undefined
+              if (pkg.startsWith('shiki') || pkg.startsWith('@shikijs/')) return 'vendor-shiki'
+              if (pkg === 'zod') return 'vendor-zod'
+              if (pkg === 'react' || pkg === 'react-dom' || pkg === 'scheduler') return 'vendor-react-dom'
+              if (
+                pkg.startsWith('@mantine/') ||
+                pkg.startsWith('@mui/') ||
+                pkg === 'clsx' ||
+                pkg.startsWith('@emotion/')
+              )
+                return 'vendor-ui'
+              if (pkg === 'ai' || pkg.startsWith('@ai-sdk/')) return 'vendor-ai'
+              if (pkg === 'katex') return 'vendor-katex'
+              if (pkg === 'lodash') return 'vendor-lodash'
+              if (pkg.startsWith('d3') || pkg === 'recharts' || pkg.startsWith('victory-vendor')) return 'vendor-charts'
+              if (pkg === '@noble/hashes' || pkg === 'gpt-tokenizer' || pkg === 'js-tiktoken') return 'vendor-tokenizer'
+              if (pkg === 'mermaid' || pkg.startsWith('@mermaid-js/')) return 'vendor-mermaid'
+              if (pkg === 'cytoscape' || pkg === 'dagre' || pkg === 'dagre-d3-es') return 'vendor-diagrams'
+              if (pkg.startsWith('marked') || pkg === 'markdown-it' || pkg === 'dompurify' || pkg === 'highlight.js')
+                return 'vendor-markdown'
+              if (pkg.startsWith('@modelcontextprotocol/')) return 'vendor-mcp'
+              if (
+                pkg === 'photoswipe' ||
+                pkg === '@openrouter/ai-sdk-provider' ||
+                pkg.startsWith('@dnd-kit/') ||
+                pkg === 'react-zoom-pan-pinch' ||
+                pkg.startsWith('micromark') ||
+                pkg === 'react-virtuoso' ||
+                pkg === 'i18next' ||
+                pkg === 'react-i18next'
+              )
+                return 'vendor-misc'
               return undefined
             },
           },

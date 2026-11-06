@@ -357,8 +357,8 @@ export const IconScanSearch = createIcon(
 )
 
 // ---------- lucide-react 名称映射（复用自绘图标） ----------
-export { IconAlertCircle as AlertCircle, IconChartBarStacked, IconCircleCheck as CheckCircle }
+export { IconAlertCircle as AlertCircle, IconCircleCheck as CheckCircle }
 export { IconChevronDown as LucideChevronDown, IconChevronUp as LucideChevronUp, IconEye as LucideEye }
-export { IconFileText as LucideFileText, IconLink2, IconLoader as LucideLoader, IconLoader2 as LucideLoader2 }
-export { IconPlus as PlusIcon, IconRotateCw, IconScanSearch, IconSearch as LucideSearch }
+export { IconFileText as LucideFileText, IconLoader as LucideLoader, IconLoader2 as LucideLoader2 }
+export { IconPlus as PlusIcon, IconRotateCw, IconSearch as LucideSearch }
 export { IconTrash as Trash2, IconX as LucideX }

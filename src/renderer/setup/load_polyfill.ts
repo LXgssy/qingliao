@@ -1,8 +1,2 @@
-import { CHATBOX_BUILD_TARGET } from '../variables'
-
-if (CHATBOX_BUILD_TARGET === 'mobile_app') {
-  import('core-js/actual').catch((error) => {
-    // Optionally log or handle the import error
-    console.error('Failed to load polyfills:', error)
-  })
-}
+// 轻聊：面向现代浏览器，无需 core-js polyfill（避免拖入 1200+ 模块）
+export {}

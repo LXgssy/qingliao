@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Avatar, Box, Divider, Flex, ScrollArea, Space, Stack, Text } from '@mantine/core'
+import { ActionIcon, Anchor, Avatar, Box, Divider, Flex, Paper, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import {
   type AgentModeEntry,
   type CopilotDetail,
@@ -20,7 +20,7 @@ import { z } from 'zod'
 import { trackJkClickEvent } from '@/analytics/jk'
 import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
 import { rendererApplication } from '@/app/renderer-application'
-import { ChatboxWelcomeCard } from '@/components/common/ChatboxWelcomeCard'
+import { navigateToSettings } from '@/modals/settings-navigation'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ImageInStorage } from '@/components/Image'
 import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
@@ -501,11 +501,26 @@ function Index() {
             {welcomeCardMode !== 'none' && (
               <Box className="pointer-events-none absolute left-0 right-0 z-10" style={{ bottom: '100%' }} mb="sm">
                 <Box className={paddedContentColumnClassName(widthFull)}>
-                  <ChatboxWelcomeCard
-                    mode={welcomeCardMode}
-                    pageName={JK_PAGE_NAMES.CHAT_PAGE}
+                  <Paper
+                    withBorder
+                    radius="lg"
+                    py="sm"
+                    px="md"
                     className="pointer-events-auto w-full"
-                  />
+                  >
+                    <Text size="sm">
+                      开始使用：打开{' '}
+                      <Anchor
+                        size="sm"
+                        onClick={() => {
+                          navigateToSettings()
+                        }}
+                      >
+                        设置 → 模型提供方
+                      </Anchor>
+                      ，填入你自己的 API Key 即可对话。联网搜索默认可用，无需登录。
+                    </Text>
+                  </Paper>
                 </Box>
               </Box>
             )}

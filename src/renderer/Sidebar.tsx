@@ -78,9 +78,7 @@ export default function Sidebar() {
   const sidebarWidth = useSidebarWidth()
 
   const isSmallScreen = useIsSmallScreen()
-  const showDownloadApp = CHATBOX_BUILD_PLATFORM === 'web'
-  const webAppDownloadPromptVisible = useWebAppDownloadPromptVisible()
-  const showDesktopDownloadCard = showDownloadApp && !isSmallScreen && webAppDownloadPromptVisible
+  const showDesktopDownloadCard = false // 轻聊：不展示桌面下载卡片
 
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartX = useRef<number>(0)
@@ -293,20 +291,13 @@ export default function Sidebar() {
 
         {showDesktopDownloadCard && (
           <Box px="xs" pb="xs">
-            <SidebarDesktopDownloadCard />
+            {/* 轻聊：纯静态网页版，无桌面版推广 */}
           </Box>
         )}
 
         <Stack gap="xs" px="xs" pb="xs">
           <Divider />
-          {showDownloadApp && !showDesktopDownloadCard && (
-            <SidebarNavRow
-              testId={TestId.sidebar.downloadApp}
-              label={t('Download app')}
-              icon={IconDownload}
-              onClick={handleDownloadApp}
-            />
-          )}
+          {/* 轻聊：无桌面版，去掉下载入口 */}
           {isSmallScreen && <NewChatButton onClick={handleCreateNewSession} />}
           <Flex align="center" gap={2}>
             <Box flex={1} miw={0}>
