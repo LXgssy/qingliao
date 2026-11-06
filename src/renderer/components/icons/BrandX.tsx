@@ -1,13 +1,13 @@
-import { MouseEventHandler } from 'react'
+import * as React from 'react'
 
-export default function BrandX(props: { className?: string; onClick?: MouseEventHandler<SVGSVGElement> }) {
-  const { className, onClick } = props
+// 轻聊原创 X 标：黑盘白叉
+function BrandX(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg className={className} onClick={onClick} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M17.6408 3H20.6866L14.0331 10.6239L21.8613 21H15.7327L10.9291 14.7082L5.43884 21H2.39013L9.50615 12.8427L2 3.00142H8.28468L12.6201 8.75126L17.6408 3ZM16.5697 19.1728H18.2579L7.36255 4.73219H5.55233L16.5697 19.1728Z"
-        fill="currentColor"
-      />
+    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" {...props}>
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="#111827" />
+      <path d="M7 7l10 10M17 7L7 17" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
+
+export default React.memo(BrandX)

@@ -1,13 +1,34 @@
 import { createRequire } from 'node:module'
+import fs from 'node:fs'
 import path, { resolve } from 'node:path'
-import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type ElectronViteConfig, externalizeDepsPlugin } from 'electron-vite'
-import { visualizer } from 'rollup-plugin-visualizer'
 import type { Plugin } from 'vite'
 import packageJson from './release/app/package.json'
 createRequire(import.meta.url)('./scripts/build-mobile-work-worker.cjs').buildWorkModeWorker()
+
+/**
+ * 轻聊：精确别名 shim —— 把第三方图标库整体替换为自绘图标体系，
+ * 并把大桶依赖（mantine/mui 等）指向 tree-shakable shim，避免构建内存爆炸。
+ */
+export function exactAliasShims(): Plugin {
+  const muiShimDir = resolve(__dirname, 'src/renderer/shims/mui')
+  return {
+    name: 'ql-exact-alias-shims',
+    enforce: 'pre',
+    resolveId(source) {
+      if (source === '@tabler/icons-react') return resolve(__dirname, 'src/renderer/shims/qingliao-tabler.tsx')
+      if (source === 'lucide-react') return resolve(__dirname, 'src/renderer/shims/qingliao-lucide.tsx')
+      if (source.startsWith('@mui/icons-material/')) {
+        const name = source.slice('@mui/icons-material/'.length)
+        const shim = resolve(muiShimDir, `${name}.tsx`)
+        if (fs.existsSync(shim)) return shim
+      }
+      return null
+    },
+  }
+}
 /**
  * Vite plugin to inject <base href="/"> for web builds
  * This ensures relative paths resolve correctly for SPA routes like /session/xxx
@@ -42,18 +63,6 @@ export function injectReleaseDate(): Plugin {
           injectTo: 'head-prepend',
         },
       ]
-    },
-  }
-}
-
-/**
- * Vite plugin to replace Plausible data-domain for web builds
- */
-export function replacePlausibleDomain(): Plugin {
-  return {
-    name: 'replace-plausible-domain',
-    transformIndexHtml(html) {
-      return html.replace('data-domain="app.chatboxai.app"', 'data-domain="web.chatboxai.app"')
     },
   }
 }
@@ -265,36 +274,16 @@ export default defineConfig(({ mode }) => {
         react({}),
         dvhToVh(),
         injectViewportContent(isDesktop),
+        exactAliasShims(),
         isWeb ? injectBaseTag() : undefined,
         injectReleaseDate(),
-        isWeb ? replacePlausibleDomain() : undefined,
-        visualizer({
-          filename: 'release/app/dist/renderer/stats.html',
-          open: false,
-          title: 'Renderer Process Dependency Analysis',
-        }),
-        process.env.SENTRY_AUTH_TOKEN
-          ? sentryVitePlugin({
-              authToken: process.env.SENTRY_AUTH_TOKEN,
-              org: 'sentry',
-              project: 'chatbox',
-              url: 'https://sentry.midway.run/',
-              release: {
-                name: inferredRelease,
-                ...(inferredDist ? { dist: inferredDist } : {}),
-              },
-              sourcemaps: {
-                assets: isProduction ? 'release/app/dist/renderer/**' : 'output/renderer/**',
-              },
-              telemetry: false,
-            })
-          : undefined,
       ].filter(Boolean),
       build: {
         outDir: isProduction ? 'release/app/dist/renderer' : undefined,
         target: 'es2020', // Avoid static initialization blocks for browser compatibility
-        sourcemap: isProduction ? 'hidden' : true,
-        minify: isProduction ? 'esbuild' : false, // Use esbuild for faster, less memory-intensive minification
+        sourcemap: false, // 轻聊：不生成 sourcemap（省体积与内存）
+        reportCompressedSize: false,
+        minify: isProduction ? 'esbuild' : false,
         rollupOptions: {
           output: {
             entryFileNames: 'js/[name].[hash].js',
@@ -311,29 +300,46 @@ export default defineConfig(({ mode }) => {
               }
               return 'assets/[name].[hash][extname]'
             },
-            // Optimize chunk splitting to reduce memory usage during build
+            hoistTransitiveImports: false,
+            // 轻聊分桶：pnpm 路径先剥离 .pnpm/<pkg>@ver/node_modules 前缀再取真实包名
             manualChunks(id) {
               const normalizedId = id.split(path.sep).join('/')
-              const isNodeModulePackage = (pkg: string) => normalizedId.includes(`/node_modules/${pkg}/`)
-
-              if (normalizedId.includes('/node_modules/')) {
-                // Keep a single Zod instance. If Zod is pulled into vendor-ai with
-                // the Vercel AI SDK, SettingsSchema.parse() treats sibling schemas
-                // as non-schemas and renderer bootstrap never leaves the splash.
-                if (isNodeModulePackage('zod')) {
-                  return 'vendor-zod'
-                }
-                // Split large vendor chunks
-                if (isNodeModulePackage('@ai-sdk') || isNodeModulePackage('ai')) {
-                  return 'vendor-ai'
-                }
-                if (isNodeModulePackage('@mantine') || isNodeModulePackage('@tabler')) {
-                  return 'vendor-ui'
-                }
-                if (isNodeModulePackage('d3') || /\/node_modules\/d3-[^/]+\//.test(normalizedId)) {
-                  return 'vendor-charts'
-                }
+              if (!normalizedId.includes('/node_modules/')) {
+                // 应用源码按路径哈希分 6 桶，控制单文件体积
+                const rel = normalizedId.replace(/^.*\/(src|packages)\//, '$1/')
+                let h = 0
+                for (let i = 0; i < rel.length; i++) h = (h * 31 + rel.charCodeAt(i)) >>> 0
+                return 'app-g' + (h % 6)
               }
+              const pm =
+                normalizedId.match(/\/node_modules\/\.pnpm\/[^/]+\/node_modules\/((?:@[^/]+\/)?[^/]+)\//) ||
+                normalizedId.match(/\/node_modules\/((?:@[^/]+\/)?[^/]+)\//)
+              if (pm) {
+                const pkg = pm[1].toLowerCase()
+                // 语法高亮语言包/主题与假数据生成器：不进桶，动态分包按需加载
+                if (pkg.startsWith('@shikijs/') || pkg.startsWith('shiki')) return undefined
+                if (pkg.startsWith('@faker-js/')) return undefined
+                if (pkg === 'zod') return 'vendor-zod'
+                if (pkg === 'react' || pkg === 'react-dom' || pkg === 'scheduler') return 'vendor-react-dom'
+                if (
+                  pkg.startsWith('@mantine/') ||
+                  pkg.startsWith('@mui/') ||
+                  pkg === 'clsx' ||
+                  pkg.startsWith('@emotion/')
+                )
+                  return 'vendor-ui'
+                if (pkg === 'ai' || pkg.startsWith('@ai-sdk/')) return 'vendor-ai'
+                if (pkg === 'katex') return 'vendor-katex'
+                if (pkg === 'lodash' || pkg === 'lodash-es') return 'vendor-lodash'
+                if (pkg.startsWith('d3') || pkg === 'recharts' || pkg.startsWith('victory-vendor')) return 'vendor-charts'
+                if (pkg === '@noble/hashes' || pkg === 'gpt-tokenizer' || pkg === 'js-tiktoken') return 'vendor-tokenizer'
+                if (pkg === 'mermaid' || pkg.startsWith('@mermaid-js/') || pkg === 'cytoscape' || pkg === 'dagre')
+                  return 'vendor-diagrams'
+                let h = 0
+                for (let i = 0; i < pkg.length; i++) h = (h * 31 + pkg.charCodeAt(i)) >>> 0
+                return 'vendor-g' + (h % 8)
+              }
+              return undefined
             },
           },
         },

@@ -1,10 +1,10 @@
 import { Image } from '@mantine/core'
 import type { ModelProvider } from '@shared/types'
 import { useProviders } from '@/hooks/useProviders'
-import { getProviderIconSrc } from '@/utils/providerIconSrc'
 import CustomProviderIcon from '../CustomProviderIcon'
 import ProviderIcon from './ProviderIcon'
 
+// 轻聊：内置提供方一律使用自绘标；仅自定义提供方支持用户上传的 iconUrl
 export default function ProviderImageIcon(props: {
   className?: string
   size?: number
@@ -24,13 +24,5 @@ export default function ProviderImageIcon(props: {
     )
   }
 
-  const iconSrc = getProviderIconSrc(provider)
-
-  return iconSrc ? (
-    <Image w={size} h={size} src={iconSrc} className={className} alt={`${providerName || provider} image icon`} />
-  ) : providerInfo && !providerInfo.isCustom ? (
-    <ProviderIcon provider={provider} size={size} className={className} />
-  ) : providerName ? (
-    <CustomProviderIcon providerId={provider} providerName={providerName} size={size} />
-  ) : null
+  return <ProviderIcon provider={provider} size={size} className={className} />
 }
