@@ -128,6 +128,8 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   }
 
   public async initTracking() {
+    // 轻聊：纯本地无遥测。gtag 脚本不会加载，守卫避免任何调用点崩溃。
+    if (typeof window.gtag !== 'function') return
     const conf = await this.getConfig()
     window.gtag('config', GOOGLE_ANALYTICS_MEASUREMENT_ID, {
       app_name: 'chatbox',
@@ -140,6 +142,7 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     })
   }
   public trackingEvent(name: string, params: AnalyticsEventParams) {
+    if (typeof window.gtag !== 'function') return
     window.gtag('event', name, params)
   }
 

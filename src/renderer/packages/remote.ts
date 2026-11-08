@@ -197,6 +197,11 @@ export async function listCopilotsByCursor(
     search?: string
   }
 ) {
+  // 轻聊：纯本地，不请求 chatboxai.app，直接返回空列表（调用方已兼容空结果）。
+  void lang
+  void filters
+  return { data: [] as CopilotDetail[], next_cursor: null as string | null }
+  /* eslint-disable no-unreachable */
   type Response = {
     data: CopilotDetail[]
     next_cursor: string | null
@@ -351,6 +356,10 @@ const ClientNotificationResponseSchema = z.object({
 export type ClientNotification = z.infer<typeof ClientNotificationSchema>
 
 export async function getNextClientNotification(params: { locale: string; displayed_batch_ids: string[] }) {
+  // 轻聊：纯本地，无远程通知，直接返回 null。
+  void params
+  return null
+  /* eslint-disable no-unreachable */
   const response = await ofetch<unknown>(`${getAPIOrigin()}/api/client_notifications/next`, {
     method: 'POST',
     retry: 0,
@@ -672,6 +681,10 @@ const ModelManifestResponseSchema = z.object({
 })
 
 export async function getModelManifest(params: { aiProvider: ModelProvider; licenseKey?: string; language?: string }) {
+  // 轻聊：纯本地，不请求 chatboxai.app 的模型清单，快速失败（调用方均有 catch 兑底）。
+  void params
+  throw new Error('qingliao-local: remote model manifest disabled')
+  /* eslint-disable no-unreachable */
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/model_manifest`,
@@ -768,6 +781,10 @@ const ChatboxAIModelListResponseSchema = z.object({
 export type ChatboxAIModelList = z.infer<typeof ChatboxAIModelListResponseSchema>['data']
 
 export async function getChatboxAIModelList(params: { licenseKey?: string; language?: string }) {
+  // 轻聊：纯本地，不请求 chatboxai.ai 的模型列表，快速失败（调用方均有 catch 兑底）。
+  void params
+  throw new Error('qingliao-local: remote model list disabled')
+  /* eslint-disable no-unreachable */
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/chatbox_ai/model_list`,

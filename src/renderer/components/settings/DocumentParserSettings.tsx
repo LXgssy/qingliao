@@ -12,18 +12,16 @@ const ALL_PARSER_OPTIONS: {
   label: string
   desktopOnly?: boolean
 }[] = [
-  { value: 'local', label: 'Local' },
-  { value: 'chatbox-ai', label: 'Chatbox AI' },
-  { value: 'mineru', label: 'MinerU', desktopOnly: true }, // Only available on desktop (requires IPC)
+  { value: 'local', label: '本地解析' },
+  { value: 'chatbox-ai', label: '轻聊AI（本地优先）' },
+  { value: 'mineru', label: 'MinerU', desktopOnly: true }, // 仅桌面端（需要 IPC）
 ]
 
 const PARSER_DESCRIPTIONS: Record<DocumentParserType, string> = {
-  none: 'Only supports basic text files (.txt, .md, .json, code files, etc.). For PDF and Office files, please switch to Chatbox AI.',
-  local:
-    'Uses built-in document parsing feature, supports common file types. Free usage, no compute points will be consumed.',
-  'chatbox-ai':
-    'Tries local parsing first without consuming compute points. If local parsing fails, Chatbox AI cloud parsing will be used and compute points will be consumed.',
-  mineru: 'Third-party cloud parsing service, supports PDF and most Office files. Requires API token.',
+  none: '仅支持纯文本文件（.txt、.md、.json、代码文件等）。PDF 与 Office 文件请选择本地解析或轻聊AI。',
+  local: '使用内置文档解析，支持常见文件类型。完全本地处理，免费使用。',
+  'chatbox-ai': '优先本地解析；若本地不支持该格式，会提示改用其它解析器。轻聊不提供云端解析。',
+  mineru: '第三方云端解析服务，支持 PDF 与大部分 Office 文件。需要 API Token。',
 }
 
 /** Parser choice and its credentials, as one settings section. */
@@ -40,7 +38,7 @@ export function DocumentParserSettings() {
     const isDesktop = platform.type === 'desktop'
     return ALL_PARSER_OPTIONS.filter((opt) => {
       if (opt.desktopOnly && !isDesktop) return false
-      if (opt.value === 'local' && !isDesktop && platform.type !== 'mobile') return false
+      // 轻聊：web 端也开放本地解析（内置 pdfjs/文档解析已随包提供）
       return true
     })
   }, [])
@@ -56,7 +54,7 @@ export function DocumentParserSettings() {
         description={
           currentParserType === 'local' && platform.type === 'mobile'
             ? t(
-                'Parses text, DOCX, XLSX, and PPTX files locally first (Office files up to 10 MB). If local parsing fails, Chatbox AI cloud parsing will be used when a license is available and compute points will be consumed.'
+                '先本地解析文本、DOCX、XLSX、PPTX 文件（Office 文件最大 10 MB）；若本地不支持将提示改用其它解析器。'
               )
             : t(PARSER_DESCRIPTIONS[currentParserType])
         }

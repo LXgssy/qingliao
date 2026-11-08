@@ -5,7 +5,7 @@ import { migrateMessage } from '../../shared/utils/message'
 export const defaultSessionsForEN: Session[] = [
   {
     id: 'justchat-b612-406a-985b-3ab4d2c482ff',
-    name: 'Just chat',
+    name: '随聊',
     type: 'chat',
     messages: [
       {

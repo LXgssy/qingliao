@@ -31,15 +31,6 @@
     -->
     <title>Chatbox</title>
     <!-- Google tag (gtag.js) -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-B365F44W6E"
-    ></script>
-    <script
-      defer
-      data-domain="app.chatboxai.app"
-      src="https://plausible.midway.run/js/script.local.hash.manual.js"
-    ></script>
     <script>
       window.plausible =
         window.plausible ||
@@ -66,6 +57,69 @@
           initialTheme
         );
       }
+    </script>
+    <script>
+      /* 轻聊全局滚轮兜底：
+         部分浏览器内核/环境下，滚轮事件不触发任何原生滚动（表现为整页滚轮失灵）。
+         此脚本在捕获阶段监听 wheel，一帧后检查目标链上最近的可滚容器是否真的滚动了；
+         未滚动则手动补滚。原生滚动正常时无任何额外动作。 */
+      ;(function () {
+        if (window.__qingliaoWheelFix) return
+        window.__qingliaoWheelFix = true
+        var LINE = 16
+        function normDelta(e) {
+          var d = e.deltaY !== 0 ? e.deltaY : e.deltaX
+          if (e.deltaMode === 1) d = d * LINE
+          else if (e.deltaMode === 2) d = d * Math.max(400, document.documentElement.clientHeight || 600)
+          return d
+        }
+        function findScroller(el, vertical, delta) {
+          var cur = el
+          var depth = 0
+          while (cur && cur.nodeType === 1 && depth < 40) {
+            var cs = null
+            try { cs = window.getComputedStyle(cur) } catch (err) { return null }
+            if (cs) {
+              var ovf = vertical ? cs.overflowY : cs.overflowX
+              if (ovf === 'auto' || ovf === 'scroll' || ovf === 'overlay') {
+                var size = vertical ? cur.scrollHeight : cur.scrollWidth
+                var view = vertical ? cur.clientHeight : cur.clientWidth
+                if (size > view + 1) {
+                  var pos = vertical ? cur.scrollTop : cur.scrollLeft
+                  var max = size - view
+                  if ((delta < 0 && pos > 0) || (delta > 0 && pos < max - 1)) return cur
+                }
+              }
+            }
+            cur = cur.parentElement
+            depth++
+          }
+          return null
+        }
+        document.addEventListener('wheel', function (e) {
+          if (e.defaultPrevented || e.ctrlKey) return
+          var delta = normDelta(e)
+          if (!delta) return
+          var vertical = e.deltaY !== 0
+          var target = e.target
+          if (!target || target.nodeType !== 1) return
+          var sc = findScroller(target, vertical, delta)
+          if (!sc) return
+          var before = vertical ? sc.scrollTop : sc.scrollLeft
+          requestAnimationFrame(function () {
+            // 事件若在后续阶段被应用代码取消（如自定义横向滚动区），不再干预
+            if (e.defaultPrevented) return
+            var after = vertical ? sc.scrollTop : sc.scrollLeft
+            if (after !== before) return // 原生滚动已生效
+            var max = vertical ? sc.scrollHeight - sc.clientHeight : sc.scrollWidth - sc.clientWidth
+            var next = Math.max(0, Math.min(max, before + delta))
+            if (next !== before) {
+              if (vertical) sc.scrollTop = next
+              else sc.scrollLeft = next
+            }
+          })
+        }, { capture: true, passive: true })
+      })()
     </script>
     <style>
       html[data-theme="dark"] {

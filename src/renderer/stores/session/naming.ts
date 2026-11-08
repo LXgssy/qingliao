@@ -1,4 +1,4 @@
-import { shouldBackfillThreadName, UNTITLED_SESSION_NAME } from '@chatbox/core'
+import { isUntitledSessionName, shouldBackfillThreadName } from '@chatbox/core'
 import { SessionNamingService } from '@chatbox/core/application/session'
 import type { SessionHeader } from '@chatbox/core/ports'
 import { currentModelFactory } from '@/adapters/CurrentModelFactory'
@@ -59,7 +59,7 @@ export async function syncSessionAutoTitleOnOpen(session: SessionHeader, isCurre
   if (
     !shouldBackfillThreadName(session) &&
     (settingsService.getSettings().autoGenerateTitle === false ||
-      (session.name !== UNTITLED_SESSION_NAME && session.threadName))
+      (!isUntitledSessionName(session.name) && session.threadName))
   )
     return
   if (isCurrent()) await syncSessionAutoTitle(session.id)

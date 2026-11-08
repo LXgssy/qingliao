@@ -1,58 +1,18 @@
-import * as Sentry from '@sentry/react'
-import { createSentryEventProcessor } from '@shared/utils/sentry_policy'
-import { initSettingsStore, settingsStore } from '@/stores/settingsStore'
-import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET, NODE_ENV } from '@/variables'
-import platform from '../platform'
-
-const processSentryEvent = createSentryEventProcessor({
-  normalSampleRate: 0.1,
-  source: 'renderer',
-})
+// 轻聊：纯本地应用，不向远程上报崩溃数据。
+// 原版此模块会初始化 Sentry（sentry.midway.run）；
+// 轻聊保留 initSentry 导出与启动时序（内部做一次设置水合），
+// 但不再安装任何远程上报器。
+import { initSettingsStore } from '@/stores/settingsStore'
 
 let sentryInitPromise: Promise<boolean> | undefined
 
 async function initializeSentry(): Promise<boolean> {
   try {
-    const settings = await initSettingsStore()
-    if (!settings.allowReportingAndTracking) {
-      return false
-    }
-
-    const version = await platform.getVersion().catch(() => 'unknown')
-    if (!settingsStore.getState().allowReportingAndTracking) {
-      return false
-    }
-    Sentry.init({
-      dsn: 'https://eca691c5e01ebfa05958fca1fcb487a9@sentry.midway.run/697',
-      environment: NODE_ENV,
-      sampleRate: 1.0,
-      tracesSampleRate: 0.1,
-      replaysSessionSampleRate: 0.05,
-      replaysOnErrorSampleRate: 0.05,
-      release: version,
-      initialScope: {
-        tags: {
-          platform: platform.type,
-          app_version: version,
-          build_target: CHATBOX_BUILD_TARGET,
-          build_platform: CHATBOX_BUILD_PLATFORM,
-          error_source: 'renderer',
-        },
-      },
-      beforeBreadcrumb(breadcrumb) {
-        // Console output is already persisted in local app logs and can contain user data.
-        return breadcrumb.category === 'console' ? null : breadcrumb
-      },
-      beforeSend(event, hint) {
-        if (!settingsStore.getState().allowReportingAndTracking) {
-          return null
-        }
-        return processSentryEvent(event, hint)
-      },
-    })
-    return true
+    // 保留设置水合调用以维持启动时序（幂等、有缓存），随后直接返回。
+    await initSettingsStore()
+    return false
   } catch (e) {
-    console.error('Failed to initialize Sentry:', e)
+    console.error('Failed to initialize telemetry guard:', e)
     return false
   }
 }
@@ -61,18 +21,3 @@ export function initSentry(): Promise<boolean> {
   sentryInitPromise ??= initializeSentry()
   return sentryInitPromise
 }
-
-settingsStore.subscribe((settings, previousSettings) => {
-  if (settings.allowReportingAndTracking === previousSettings.allowReportingAndTracking) {
-    return
-  }
-
-  sentryInitPromise = undefined
-  if (settings.allowReportingAndTracking) {
-    void initSentry()
-  } else {
-    void Sentry.close(2000)
-  }
-})
-
-export default Sentry

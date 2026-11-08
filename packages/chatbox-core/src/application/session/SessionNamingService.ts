@@ -8,7 +8,7 @@ import {
   isNameGenerationAttemptKeyForSession,
   sanitizeGeneratedSessionName,
   shouldBackfillThreadName,
-  UNTITLED_SESSION_NAME,
+  isUntitledSessionName,
 } from '../../session/auto-title'
 import type { SessionHeaderRead } from '../../ports/session-row-repository'
 import type { SessionHeader } from '../../ports/session-read-model'
@@ -83,13 +83,13 @@ export class SessionNamingService {
     this.schedule(
       buildNameGenerationAttemptKey('name', sessionId, options.threadIdentity),
       sessionId,
-      (session) => session.header.name === UNTITLED_SESSION_NAME && session.summary.hasAutoTitleContent,
+      (session) => isUntitledSessionName(session.header.name) && session.summary.hasAutoTitleContent,
       () =>
         this.generate(
           sessionId,
           'name-and-thread',
           options.locale,
-          (session) => session.header.name === UNTITLED_SESSION_NAME && session.summary.hasAutoTitleContent
+          (session) => isUntitledSessionName(session.header.name) && session.summary.hasAutoTitleContent
         ),
       options.generating,
       options.threadIdentity
@@ -140,7 +140,7 @@ export class SessionNamingService {
       threadIdentity: namingIdentity(session),
       generating: session.summary.generatingMessageCount > 0,
     }
-    if (header.name === UNTITLED_SESSION_NAME) this.scheduleNameAndThreadName(sessionId, nextOptions)
+    if (isUntitledSessionName(header.name)) this.scheduleNameAndThreadName(sessionId, nextOptions)
     else if (!header.threadName) this.scheduleThreadName(sessionId, nextOptions)
   }
 

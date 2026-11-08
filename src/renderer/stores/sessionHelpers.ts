@@ -7,6 +7,7 @@ import {
 } from '@chatbox/core/application/attachments'
 import { projectSessionMeta, SessionSearchService, type SessionSearchOptions } from '@chatbox/core/application/session'
 import { isActionAvailableInMode, resolveSessionMode } from '@chatbox/core/session/mode-policy'
+import { UNTITLED_SESSION_NAME } from '@chatbox/core'
 import { isSessionAttachmentRagSupportedFilePath, isSupportedFile, isTextFilePath } from '@shared/file-extensions'
 import {
   CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR,
@@ -553,7 +554,8 @@ async function parsePickedAsset(
     case 'local':
       return parseFileWithLocalFallback(file)
     case 'chatbox-ai':
-      return parseFileWithLocalFallback(file, { forceChatboxAIFallback: true })
+      // 轻聊：无云端解析服务，该档位等同「本地优先」，不再回退远程。
+      return parseFileWithLocalFallback(file, {})
     case 'mineru': {
       const apiToken = parserConfig.mineru?.apiToken
       if (!apiToken) {
@@ -990,7 +992,7 @@ export function initEmptyChatSession(): Omit<SessionHeader, 'id'> & { messages: 
       }
     : lastUsedChatModel || resolveChatboxLicenseDefaultModel(settings)
   const newSession: Omit<SessionHeader, 'id'> & { messages: Message[] } = {
-    name: 'Untitled',
+    name: UNTITLED_SESSION_NAME,
     type: 'chat',
     threadName: '',
     messages: [],

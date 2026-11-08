@@ -1,4 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
+import { UNTITLED_SESSION_NAME } from '@chatbox/core'
 import { ActionIcon, Anchor, Avatar, Box, Divider, Flex, Paper, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import {
   type AgentModeEntry,
@@ -94,7 +95,7 @@ function Index() {
     const model = settings.defaultChatModel
       ? { provider: settings.defaultChatModel.provider, modelId: settings.defaultChatModel.model }
       : lastUsedModelStore.getState().chat || resolveChatboxLicenseDefaultModel(settings)
-    return { id: 'new', name: 'Untitled', type: 'chat', threadName: '', settings: { ...model } }
+    return { id: 'new', name: UNTITLED_SESSION_NAME, type: 'chat', threadName: '', settings: { ...model } }
   })
   const [systemPrompt, setSystemPrompt] = useState(() => settingsStore.getState().defaultPrompt || '')
   const [hasCompletedFirstSuccessfulChat, setHasCompletedFirstSuccessfulChat] = useState<boolean | null>(null)
@@ -228,7 +229,7 @@ function Index() {
         selectedCopilot?.avatar?.type === 'storage-key' ? selectedCopilot.avatar.storageKey : undefined,
       picUrl: selectedCopilot?.avatar?.type === 'url' ? selectedCopilot.avatar.url : selectedCopilot?.picUrl,
       backgroundImage: selectedCopilot?.backgroundImage,
-      name: selectedCopilot?.name || 'Untitled',
+      name: selectedCopilot?.name || UNTITLED_SESSION_NAME,
       threadName: '',
     }))
     setSystemPrompt(selectedCopilot?.prompt ?? (settingsStore.getState().defaultPrompt || ''))
@@ -251,7 +252,7 @@ function Index() {
         assistantAvatarKey: c.avatar?.type === 'storage-key' ? c.avatar.storageKey : undefined,
         picUrl: c.avatar?.type === 'url' ? c.avatar.url : c.picUrl,
         backgroundImage: c.backgroundImage,
-        name: c.name || 'Untitled',
+        name: c.name || UNTITLED_SESSION_NAME,
         threadName: '',
       }))
       setSystemPrompt(c.prompt)

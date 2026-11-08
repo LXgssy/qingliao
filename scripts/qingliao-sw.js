@@ -2,7 +2,7 @@
    激活时清理一切旧缓存，确保新版本构建总能生效 */
 ;(function () {
   'use strict'
-  var CACHE = 'qingliao-assets-v2'
+  var CACHE = 'qingliao-assets-v3'
 
   self.addEventListener('install', function () {
     self.skipWaiting()

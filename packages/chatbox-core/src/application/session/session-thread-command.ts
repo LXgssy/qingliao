@@ -2,7 +2,7 @@ import { SessionWriteConflictError } from '../../ports/session-repository'
 import type { CurrentThreadIdentity, SessionThreadOperation } from '../../ports/session-structure-command'
 import type { Message, SessionHeader } from '../../types'
 import type { ThreadRow } from '../../session/session-tree/types'
-import { UNTITLED_SESSION_NAME } from '../../session/auto-title'
+import { isUntitledSessionName } from '../../session/auto-title'
 import { getMessageText } from '../../utils/message'
 import { retainedSystem } from './session-message-structure'
 import {
@@ -54,7 +54,7 @@ export async function planThreadStructure(
     if (
       operation.onlyPending &&
       (!target.summary?.hasAutoTitleContent ||
-        (operation.mode === 'name-and-thread' ? reader.record.name !== UNTITLED_SESSION_NAME : Boolean(target.name)))
+        (operation.mode === 'name-and-thread' ? !isUntitledSessionName(reader.record.name) : Boolean(target.name)))
     )
       return plan
     putThread(plan, { ...target, name: operation.name })

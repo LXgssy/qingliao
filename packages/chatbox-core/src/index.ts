@@ -412,6 +412,7 @@ export {
   DEFAULT_INBOX_SESSION_NAME,
   isDefaultInboxSession,
   isNameGenerationAttemptKeyForSession,
+  isUntitledSessionName,
   type NameGenerationKind,
   sanitizeGeneratedSessionName,
   shouldBackfillThreadName,
