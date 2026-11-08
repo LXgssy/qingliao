@@ -40,10 +40,11 @@
       }
     </script>
     <script>
-      /* 轻聊全局滚轮兜底：
-         部分浏览器内核/环境下，滚轮事件不触发任何原生滚动（表现为整页滚轮失灵）。
-         此脚本在捕获阶段监听 wheel，一帧后检查目标链上最近的可滚容器是否真的滚动了；
-         未滚动则手动补滚。原生滚动正常时无任何额外动作。 */
+      /* 轻聊全局滚轮兜底 v3：
+         1) 原生滚动正常 → 无任何干预；
+         2) 滚轮被转为横向滚动（应用自有劫持，如横向标签条）→ 不干预；
+         3) 其余情况（隐形滚动锁 react-remove-scroll、异常内核等导致滚轮失效）→ 一帧后手动补滚。
+         真模态的背板没有可滚祖先，findScroller 返回 null，天然不会误滚背板。 */
       ;(function () {
         if (window.__qingliaoWheelFix) return
         window.__qingliaoWheelFix = true
@@ -77,21 +78,41 @@
           }
           return null
         }
+        function findHorizontalScroller(el) {
+          var cur = el
+          var depth = 0
+          while (cur && cur.nodeType === 1 && depth < 40) {
+            try {
+              var cs = window.getComputedStyle(cur)
+              if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && cur.scrollWidth > cur.clientWidth + 1) return cur
+            } catch (err) { return null }
+            cur = cur.parentElement
+            depth++
+          }
+          return null
+        }
         document.addEventListener('wheel', function (e) {
-          if (e.defaultPrevented || e.ctrlKey) return
+          if (e.ctrlKey) return
           var delta = normDelta(e)
           if (!delta) return
           var vertical = e.deltaY !== 0
           var target = e.target
           if (!target || target.nodeType !== 1) return
+          // 应用把滚轮转成横向滚动（横向标签条等）：记录横条基线，动过就让位
+          var hx = null
+          var hxBefore = null
+          if (vertical && Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+            hx = findHorizontalScroller(target)
+            if (hx) hxBefore = hx.scrollLeft
+          }
           var sc = findScroller(target, vertical, delta)
           if (!sc) return
           var before = vertical ? sc.scrollTop : sc.scrollLeft
           requestAnimationFrame(function () {
-            // 事件若在后续阶段被应用代码取消（如自定义横向滚动区），不再干预
-            if (e.defaultPrevented) return
-            var after = vertical ? sc.scrollTop : sc.scrollLeft
-            if (after !== before) return // 原生滚动已生效
+            if (vertical ? sc.scrollTop !== before : sc.scrollLeft !== before) return // 原生滚动已生效
+            if (hx && hx.scrollLeft !== hxBefore) return // 手势被转成横向滚动
+            // 原生没滚且横向劫持未发生：强制补滚（对抗隐形滚动锁与异常内核）。
+            // 注：真模态的背板没有可滚祖先，findScroller 会返回 null，此处天然不误滚。
             var max = vertical ? sc.scrollHeight - sc.clientHeight : sc.scrollWidth - sc.clientWidth
             var next = Math.max(0, Math.min(max, before + delta))
             if (next !== before) {
