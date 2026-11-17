@@ -3,8 +3,9 @@ import { WEB_SEARCH_PROVIDERS } from './constants'
 
 describe('WEB_SEARCH_PROVIDERS', () => {
   it('contains all expected provider values', () => {
+    // 轻聊：无内置付费搜索（build-in），运行时遇到旧值会回退 Bing
     const values = WEB_SEARCH_PROVIDERS.map((p) => p.value)
-    expect(values).toEqual(['build-in', 'bing', 'tavily', 'bocha', 'querit', 'searxng'])
+    expect(values).toEqual(['bing', 'tavily', 'bocha', 'querit', 'searxng'])
   })
 
   it('each provider has a non-empty label', () => {

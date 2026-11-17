@@ -3,6 +3,7 @@ import type { SearchResult } from '@shared/types'
 import { type FetchOptions, ofetch } from 'ofetch'
 import platform from '@/platform'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { buildUrlWithQuery, fetchTextViaProxies, normalizeHeaders, shouldProxyInWeb } from './proxy-fetch'
 
 const IOS_USER_AGENT =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
@@ -97,6 +98,27 @@ abstract class WebSearch {
       })
       return response.data
     } else {
+      // 轻聊：web 端浏览器受 CORS 限制，必应等无 CORS 头的搜索源须经公共代理回退链抓取
+      if (
+        shouldProxyInWeb({
+          method: typeof options.method === 'string' ? options.method : undefined,
+          responseType: typeof options.responseType === 'string' ? options.responseType : undefined,
+        })
+      ) {
+        const fullUrl = buildUrlWithQuery(url, options.query as Record<string, unknown> | undefined)
+        const text = await fetchTextViaProxies(fullUrl, {
+          headers: normalizeHeaders(options.headers),
+          signal: options.signal,
+        })
+        if (options.responseType === 'json') {
+          try {
+            return JSON.parse(text)
+          } catch {
+            return text
+          }
+        }
+        return text
+      }
       return ofetch(url, options)
     }
   }

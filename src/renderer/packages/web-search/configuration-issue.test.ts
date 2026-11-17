@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { getWebSearchConfigurationIssue } from './configuration-issue'
 
 describe('getWebSearchConfigurationIssue', () => {
-  it('requires sign-in only for the built-in provider without a license', () => {
-    expect(getWebSearchConfigurationIssue({ provider: 'build-in' })).toBe('chatbox-ai-sign-in')
-    expect(getWebSearchConfigurationIssue({ provider: 'build-in' }, 'license-key')).toBeNull()
+  it('requires no sign-in for built-in providers (轻聊：无登录门槛)', () => {
+    expect(getWebSearchConfigurationIssue({ provider: 'build-in' })).toBeNull()
     expect(getWebSearchConfigurationIssue({ provider: 'bing' })).toBeNull()
   })
 
